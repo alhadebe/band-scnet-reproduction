@@ -1,0 +1,33 @@
+services:
+  cpu:
+    profiles: [cpu]
+    build:
+      context: .
+      args:
+        TORCH_INDEX: https://download.pytorch.org/whl/cpu
+        ORT_PACKAGE: onnxruntime
+    environment:
+      DEVICE: cpu
+    volumes:
+      - ./models:/models
+      - ./output:/output
+  gpu:
+    profiles: [gpu]
+    build:
+      context: .
+      args:
+        TORCH_INDEX: https://download.pytorch.org/whl/cu128
+        ORT_PACKAGE: onnxruntime-gpu
+    environment:
+      DEVICE: cuda
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    volumes:
+      - ./models:/models
+      - ./output:/output
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

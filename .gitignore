@@ -1,0 +1,6 @@
+models/*
+!models/.gitkeep
+output/*
+!output/.gitkeep
+__pycache__/
+*.pyc
