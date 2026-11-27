@@ -1,6 +1,10 @@
-# Band-SCNet independent reproduction — Phase 1
+# Band-SCNet independent reproduction
 
-A from-paper PyTorch research prototype for potential Mixxx stem preparation. **Untrained**: do not use output audio as real stems. No upstream checkout, weights, or training dataset needed. Default architecture has 2,591,062 parameters. Read [DESIGN.md](DESIGN.md) for source references, assumptions, and local test results.
+A from-paper PyTorch research prototype for potential Mixxx stem preparation. The Phase 1 benchmark uses random weights; do not use those outputs as real stems. No upstream checkout, weights, or dataset needed for benchmarking. Default architecture has 2,591,062 parameters. Read [DESIGN.md](DESIGN.md) for source references, assumptions, and local test results.
+
+## Phase 2: train on music
+
+See [TRAINING.md](TRAINING.md) for dataset setup, first GPU smoke run, checkpoint/resume, TensorBoard, listening tests, museval evaluation and trained ONNX export. Training is experimental; no usable checkpoint or SDR result is provided yet. Keep MUSDB18-HQ audio and its research checkpoints private until rights are resolved.
 
 ## Run on Linux with Docker Compose
 
@@ -41,7 +45,7 @@ docker compose --profile cpu run --rm cpu onnx --seconds 11 --threads 1
 docker compose --profile gpu run --rm gpu onnx --seconds 11
 ```
 
-ONNX files persist in `models/`. JSON reports appear in `output/`. CPU and GPU use the same exported file. Export is experimental and not locally tested because ONNX packages are unavailable in the development environment. The GPU runner verifies that CUDA is the first active provider but unsupported operators may still run on CPU. ORT uses host-side audio transforms and tensor transfers; PyTorch GPU benchmark keeps these tensors on GPU. A direct comparison requires acknowledging that difference.
+ONNX files persist in `models/`. JSON reports appear in `output/`. CPU and GPU use the same exported file. ONNX CPU and CUDA inference have been exercised on the i9-9900K/RTX 3090 host. Trained checkpoint export and parity still require testing. The GPU runner verifies that CUDA is the first active provider but unsupported operators may still run on CPU. ORT uses host-side audio transforms and tensor transfers; PyTorch GPU benchmark keeps these tensors on GPU. A direct comparison requires acknowledging that difference.
 
 ## Training readiness smoke test
 
@@ -50,7 +54,7 @@ docker compose --profile cpu run --rm cpu train-smoke --seconds 0.25
 docker compose --profile gpu run --rm gpu train-smoke --seconds 1
 ```
 
-This only tests backward propagation and a single optimizer update on synthetic random signals. It does not train a useful separator. Training with music data, SDR evaluation and checkpoint resumption are later phases.
+This only tests backward propagation and a single optimizer update on synthetic random signals. It does not train a useful separator. For real music training, follow [TRAINING.md](TRAINING.md).
 
 ## Project files
 

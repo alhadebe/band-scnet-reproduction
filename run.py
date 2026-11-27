@@ -55,6 +55,7 @@ def main():
     p.add_argument('--output-dir',type=Path,default=Path(os.getenv('OUTPUT_DIR','output')))
     p.add_argument('--model-dir',type=Path,default=Path(os.getenv('MODEL_DIR','models')))
     p.add_argument('--profile-flops',action='store_true')
+    p.add_argument('--checkpoint',type=Path,help='Load trusted local training checkpoint; use a separate --model-dir for ONNX')
     args=p.parse_args()
     if args.seconds<=0 or args.threads<1 or args.layers<1 or args.repeats<1 or args.warmup<0: p.error('positive duration, threads, layers and repeats required; warmup >= 0')
     torch.set_num_threads(args.threads); torch.set_num_interop_threads(1); torch.manual_seed(42)
@@ -65,11 +66,16 @@ def main():
         torch.backends.cuda.matmul.allow_tf32=False
         torch.backends.cudnn.allow_tf32=False
     model=BandSCNet(args.layers).to(device).eval()
+    if args.checkpoint:
+        if args.action not in ('export','onnx','bench'): p.error('--checkpoint is for export, onnx or bench')
+        state=torch.load(args.checkpoint,map_location='cpu',weights_only=True)
+        if state['config']['layers']!=args.layers: p.error('Checkpoint layer count differs; set --layers')
+        model.load_state_dict(state['model'])
     n=max(1,round(args.seconds*RATE)); duration=n/RATE
     wave=torch.randn(1,2,n,device=device)*.1
     spec=encode(wave)
     params=sum(p.numel() for p in model.parameters())
-    result={'action':args.action,'untrained':True,'device':str(device),'torch':torch.__version__,
+    result={'action':args.action,'untrained':not bool(args.checkpoint),'checkpoint':str(args.checkpoint) if args.checkpoint else None,'device':str(device),'torch':torch.__version__,
             'hardware':torch.cuda.get_device_name(device) if device.type=='cuda' else os.uname().machine,
             'threads':args.threads,'layers':args.layers,'parameters':params,'sample_rate':RATE,
             'input_seconds':duration,'frequency_bins':model.frequencies,'input_shape':list(spec.shape),
@@ -111,7 +117,8 @@ def main():
         optim.step(); result.update(loss=float(loss.detach()),all_gradients_finite=finite)
     else:
         # Static input shape makes the first ONNX graph straightforward to validate.
-        filename=f'bandscnet-l{args.layers}-t{spec.shape[2]}.onnx'; path=args.model_dir/filename
+        tag='trained-' if args.checkpoint else ''
+        filename=f'bandscnet-{tag}l{args.layers}-t{spec.shape[2]}.onnx'; path=args.model_dir/filename
         if args.action=='export':
             import onnx
             args.model_dir.mkdir(parents=True,exist_ok=True)
@@ -139,6 +146,7 @@ def main():
             network=timed(net,torch.device('cpu'),args.warmup,args.repeats)
             full=timed(pipeline,torch.device('cpu'),args.warmup,args.repeats)
             result.update(onnx=str(path),providers=session.get_providers(),network=network,pipeline=full,rtf=full['median_seconds']/duration,speed_x=duration/full['median_seconds'])
-    save(result,args.output_dir,f'{args.action}-{args.device}-l{args.layers}-t{spec.shape[2]}-threads{args.threads}.json')
+    tag='trained-' if args.checkpoint else ''
+    save(result,args.output_dir,f'{tag}{args.action}-{args.device}-l{args.layers}-t{spec.shape[2]}-threads{args.threads}.json')
 
 if __name__=='__main__': main()

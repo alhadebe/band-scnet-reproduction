@@ -4,3 +4,10 @@ output/*
 !output/.gitkeep
 __pycache__/
 *.pyc
+
+dataset/
+checkpoints/
+audio/
+.env
+*.pt
+*.onnx

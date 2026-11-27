@@ -6,11 +6,15 @@ services:
       args:
         TORCH_INDEX: https://download.pytorch.org/whl/cpu
         ORT_PACKAGE: onnxruntime
+    shm_size: '2gb'
     environment:
       DEVICE: cpu
     volumes:
       - ./models:/models
       - ./output:/output
+      - ${MUSDB_ROOT:-./dataset/musdb18hq}:/dataset:ro
+      - ./checkpoints:/checkpoints
+      - ./audio:/audio:ro
   gpu:
     profiles: [gpu]
     build:
@@ -18,12 +22,16 @@ services:
       args:
         TORCH_INDEX: https://download.pytorch.org/whl/cu128
         ORT_PACKAGE: onnxruntime-gpu
+    shm_size: '2gb'
     environment:
       DEVICE: cuda
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
     volumes:
       - ./models:/models
       - ./output:/output
+      - ${MUSDB_ROOT:-./dataset/musdb18hq}:/dataset:ro
+      - ./checkpoints:/checkpoints
+      - ./audio:/audio:ro
     deploy:
       resources:
         reservations:
